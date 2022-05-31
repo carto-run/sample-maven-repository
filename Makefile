@@ -18,7 +18,7 @@ content: HelloWorld.jar
 
 %.jar: %.java
 	javac $^
-	jar cvf $@ $*.class
+	jar cvfe $@ $* ./*.class
 
 
 .PHONY: release
