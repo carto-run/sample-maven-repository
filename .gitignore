@@ -1,0 +1,7 @@
+# generated stuff
+#
+
+*.class
+*.jar
+/content/
+/release/
