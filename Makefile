@@ -1,6 +1,6 @@
 .PHONY: serve
 serve: content
-	go run main.go -addr=:8080
+	go run . -cert=./testdata/crt.pem -key=./testdata/key.pem
 
 
 .PHONY: content
