@@ -37,10 +37,7 @@ func handler() http.Handler {
 func main() {
 	flag.Parse()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if err := run(ctx); err != nil {
+	if err := run(signalHandlingContext(context.TODO())); err != nil {
 		panic(err)
 	}
 }
@@ -49,7 +46,7 @@ func run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return serveHTTP(*httpAddr, handler())
+		return serveHTTP(ctx, *httpAddr, handler())
 	})
 
 	g.Go(func() error {
@@ -59,13 +56,20 @@ func run(ctx context.Context) error {
 	return g.Wait()
 }
 
-func serveHTTP(addr string, handler http.Handler) error {
+func serveHTTP(ctx context.Context, addr string, handler http.Handler) error {
 	log.Println("serving http", addr)
 
-	return (&http.Server{
+	srv := &http.Server{
 		Addr:    addr,
 		Handler: handler,
-	}).ListenAndServe()
+	}
+
+	go func() {
+		<-ctx.Done()
+		srv.Shutdown(ctx)
+	}()
+
+	return srv.ListenAndServe()
 }
 
 func serveHTTPS(
@@ -91,7 +95,7 @@ func serveHTTPS(
 		return cert, nil
 	}
 
-	return (&http.Server{
+	srv := &http.Server{
 		Addr:    addr,
 		Handler: handler,
 		TLSConfig: &tls.Config{
@@ -99,5 +103,12 @@ func serveHTTPS(
 			PreferServerCipherSuites: true,
 			MinVersion:               tls.VersionTLS13,
 		},
-	}).ListenAndServeTLS(cert, key)
+	}
+
+	go func() {
+		<-ctx.Done()
+		srv.Shutdown(ctx)
+	}()
+
+	return srv.ListenAndServeTLS(cert, key)
 }
